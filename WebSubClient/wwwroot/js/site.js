@@ -31,14 +31,15 @@ connection.on("subscribed", (subscription, hubURL) => {
     var urlCell = newRow.insertCell(0);
     var topicCell = newRow.insertCell(1);
     var eventCell = newRow.insertCell(2);
-    var unsubscribeCell = newRow.insertCell(3);
+    var contextCell = newRow.insertCell(3);
+    var unsubscribeCell = newRow.insertCell(4);
 
     var urlText = document.createTextNode(hubURL);
     var topicText = document.createTextNode(subscription.topic);
     var eventsText = document.createTextNode(subscription.events.join(","));
     var unsubscribeBtn = document.createElement('input');
     unsubscribeBtn.type = "button";
-    unsubscribeBtn.className = "btn btn-secondary";
+    unsubscribeBtn.className = "btn btn-danger";
     unsubscribeBtn.value = "Unsubscribe";
     unsubscribeBtn.id = "unsub";
     unsubscribeBtn.onclick = (function (topic) {
@@ -47,9 +48,21 @@ connection.on("subscribed", (subscription, hubURL) => {
         };
     })(subscription.topic);
 
+    var contextBtn= document.createElement('input');
+    contextBtn.type = "button";
+    contextBtn.className = "btn btn-primary";
+    contextBtn.value = "Get Context";
+    contextBtn.id = "getContext";
+    contextBtn.onclick = (function (topic) {
+        return function () {
+            getContext(subscription.topic);
+        };
+    })(subscription.topic);
+
     urlCell.appendChild(urlText);
     topicCell.appendChild(topicText);
     eventCell.appendChild(eventsText);
+    contextCell.appendChild(contextBtn);
     unsubscribeCell.appendChild(unsubscribeBtn);
 });
 
@@ -67,6 +80,15 @@ function unsubscribe(topic) {
     connection
         .invoke(
             "unsubscribe", topic)
+        .catch(e => console.error(e));
+}
+
+function getContext(topic) {
+    console.debug("getting context for " + topic);
+
+    connection
+        .invoke(
+            "getContext", topic)
         .catch(e => console.error(e));
 }
 
@@ -144,6 +166,20 @@ $("#unsubscribe").submit(function (e) {
     connection
         .invoke(
             "unsubscribe", topic)
+        .catch(e => console.error(e));
+
+    e.preventDefault();
+});
+$("#getContext").submit(function (e) {
+    console.debug("getting context: " + e);
+    let form = $(this);
+    let topic = form[0].attributes("action");
+
+    console.debug("context for " + topic);
+
+    connection
+        .invoke(
+            "getContext", topic)
         .catch(e => console.error(e));
 
     e.preventDefault();
