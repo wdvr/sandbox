@@ -28,12 +28,24 @@ namespace FHIRcastSandbox.Rules {
 
         public Subscription GetSubscription(string sessionId)
         {
-            return this.subscriptions.Where(x => x.Topic == sessionId).First();
+            return this.subscriptions.Where(x => x.Topic == sessionId).FirstOrDefault();
         }
 
         public void AddSubscription(Subscription subscription) {
             this.logger.LogInformation($"Adding subscription {subscription}.");
-            this.subscriptions = this.subscriptions.Add(subscription);
+            // Check if this subscription already exists
+            Subscription existingSubscription = GetSubscription(subscription.Topic);
+            if (existingSubscription != null)
+            {
+                // Update the existingSubscription
+                existingSubscription.Events = subscription.Events;
+                existingSubscription.Lease_Seconds = subscription.Lease_Seconds;
+                existingSubscription.Mode = subscription.Mode;
+            }
+            else
+            {
+                this.subscriptions = this.subscriptions.Add(subscription);
+            }
         }
 
         public void RemoveSubscription(Subscription subscription) {

@@ -119,6 +119,64 @@ namespace FHIRcastSandbox
             VerifiySubscription(subscription, returnedSubstription);
         }
 
+
+        [Fact]
+        public async Task ListingSubscriptions_AfterUpdatingSubscriptionToHub_Test()
+        {
+            // Arrange
+            var sessionId = "some_id";
+            var connectionId = "some_client_connection_id";
+            var subscriptionUrl = $"http://localhost:{this.hubServerPort}/api/hub";
+            var topic = $"{subscriptionUrl}/{sessionId}";
+            var events = new[] { "some_event", "another_event" };
+            var callback = $"http://localhost:{this.webSubClientServerPort}/callback/{connectionId}";
+            int leaseSeconds = 2400;
+            var subscription = Subscription.CreateNewSubscription(subscriptionUrl, topic, events, callback, leaseSeconds);
+            var httpContent = subscription.CreateHttpContent();
+
+            var clientTestResponse = await new HttpClient().GetAsync(callback);
+            Assert.True(clientTestResponse.IsSuccessStatusCode, $"Could not connect to web sub client: {clientTestResponse}");
+
+            var subscriptionResponse = await new HttpClient().PostAsync(subscriptionUrl, httpContent);
+            Assert.True(subscriptionResponse.IsSuccessStatusCode, $"Could not subscribe to hub: {subscriptionResponse}");
+            await Task.Delay(1000);
+
+            // Act
+            var result = await new HttpClient().GetStringAsync(subscriptionUrl);
+            var subscriptions = JsonConvert.DeserializeObject<Subscription[]>(result);
+
+            // Assert
+            Assert.Single(subscriptions);
+
+            // Check that all the passed values in subscription are as expected
+            Subscription returnedSubstription = subscriptions[0];
+            VerifiySubscription(subscription, returnedSubstription);
+
+            // Update the events in the subscription
+            subscription.Events = new[] { "new_event" };
+            subscription.Lease_Seconds = 1200;
+            httpContent = subscription.CreateHttpContent();
+
+            clientTestResponse = await new HttpClient().GetAsync(callback);
+            Assert.True(clientTestResponse.IsSuccessStatusCode, $"Could not connect to web sub client: {clientTestResponse}");
+
+            subscriptionResponse = await new HttpClient().PostAsync(subscriptionUrl, httpContent);
+            Assert.True(subscriptionResponse.IsSuccessStatusCode, $"Could not subscribe to hub: {subscriptionResponse}");
+            await Task.Delay(1000);
+
+            // Act
+            result = await new HttpClient().GetStringAsync(subscriptionUrl);
+            subscriptions = JsonConvert.DeserializeObject<Subscription[]>(result);
+
+            // Assert
+            Assert.Single(subscriptions);
+
+            // Check that all the passed values in subscription are as expected
+            returnedSubstription = subscriptions[0];
+            VerifiySubscription(subscription, returnedSubstription);
+
+        }
+
         [Fact]
         public async Task ListingSubscriptions_AfterUnSubscribingFromHub_Test()
         {
